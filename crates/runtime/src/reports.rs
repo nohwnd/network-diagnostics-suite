@@ -30,13 +30,25 @@ fn field<'a>(value: &'a Value, names: &[&str]) -> Option<&'a Value> {
             .map(|(_, value)| value)
     })
 }
+/// Native records are readable from version 1 through the current [`RECORD_VERSION`].
+fn supported_record_version(version: &Value) -> bool {
+    version
+        .as_u64()
+        .is_some_and(|version| (1..=u64::from(RECORD_VERSION)).contains(&version))
+}
+fn unsupported_record_version() -> Error {
+    Error::validation(match RECORD_VERSION {
+        1 => "Unsupported or invalid report schema_version; only version 1 is supported".into(),
+        latest => format!(
+            "Unsupported or invalid report schema_version; versions 1 through {latest} are supported"
+        ),
+    })
+}
 pub fn normalize(data: Value) -> Result<NormalizedReport> {
     let schema_version = field(&data, &["schema_version"]);
     if let Some(version) = schema_version {
-        if version.as_u64() != Some(1) {
-            return Err(Error::validation(
-                "Unsupported or invalid report schema_version; only version 1 is supported",
-            ));
+        if !supported_record_version(version) {
+            return Err(unsupported_record_version());
         }
         if let Some(imported) = field(&data, &["imported"]) {
             return serde_json::from_value(imported.clone())
@@ -301,7 +313,10 @@ pub fn export(report: &NormalizedReport, destination: &Path) -> Result<()> {
 /// The standalone JSON format shares the reader's explicit 16 MiB file limit.
 pub fn export_file(source: &Path, destination: &Path) -> Result<()> {
     let mut report = read(source)?;
-    if report.data.get("schema_version").and_then(Value::as_u64) == Some(1)
+    if report
+        .data
+        .get("schema_version")
+        .is_some_and(supported_record_version)
         && report.data.get("run_id").is_some_and(Value::is_string)
         && source
             .file_name()
@@ -362,7 +377,9 @@ pub fn read_page(path: &Path, offset: usize, limit: usize) -> Result<Value> {
     }
     let mut report = read(path)?;
     let original = std::mem::replace(&mut report.data, Value::Null);
-    let native = original.get("schema_version").and_then(Value::as_u64) == Some(1)
+    let native = original
+        .get("schema_version")
+        .is_some_and(supported_record_version)
         && original.get("run_id").is_some_and(Value::is_string)
         && path.file_name().is_some_and(|n| n == "summary.json");
     let mut rows = Vec::new();
