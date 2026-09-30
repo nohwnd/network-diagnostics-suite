@@ -27,11 +27,14 @@ pub struct WorkflowPlan {
     pub warnings: Vec<String>,
 }
 
-pub fn plan(
+/// Resolves ordered steps; `check_throughput` validates the resolved throughput section as a
+/// strict capability layer so this module stays independent of request planning.
+pub(crate) fn plan(
     workflow: Workflow,
     profile: &Value,
     explicit: &Value,
     strict: bool,
+    check_throughput: impl Fn(&Value) -> Result<()>,
 ) -> Result<WorkflowPlan> {
     let mut throughput_defaults =
         serde_json::to_value(lantern_throughput::SuiteConfig::default()).unwrap();
@@ -147,9 +150,7 @@ pub fn plan(
         checked_throughput["target"] = json!("profile-validation.invalid");
     }
     checked_throughput["max_total_tests"] = json!(0);
-    crate::plan_request(
-        &json!({"capability":"throughput","layers":[checked_throughput],"strict":true}),
-    )?;
+    check_throughput(&checked_throughput)?;
     let has_target = throughput["target"]
         .as_str()
         .is_some_and(|s| !s.trim().is_empty());
@@ -191,7 +192,7 @@ fn warn(warnings: &mut Vec<String>, strict: bool, message: String) -> Result<()>
         Ok(())
     }
 }
-pub fn strings(value: &Value, name: &str) -> Result<Vec<String>> {
+fn strings(value: &Value, name: &str) -> Result<Vec<String>> {
     if let Some(text) = value.as_str() {
         return Ok(vec![text.into()]);
     }
@@ -227,9 +228,24 @@ fn choice(value: &Value, name: &str, allowed: &[&str]) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    /// Plans with the runtime's throughput validation, as every production caller does.
+    fn checked(
+        workflow: Workflow,
+        profile: &Value,
+        explicit: &Value,
+        strict: bool,
+    ) -> Result<WorkflowPlan> {
+        plan(
+            workflow,
+            profile,
+            explicit,
+            strict,
+            crate::application::check_workflow_throughput,
+        )
+    }
     #[test]
     fn baseline_order_and_single_test() {
-        let p = plan(
+        let p = checked(
             Workflow::Baseline,
             &json!({"throughput":{"target":"unresolvable.invalid"}}),
             &json!({}),
@@ -241,13 +257,13 @@ mod tests {
     }
     #[test]
     fn triage_without_target_warns() {
-        let p = plan(Workflow::Triage, &json!({}), &json!({}), false).unwrap();
+        let p = checked(Workflow::Triage, &json!({}), &json!({}), false).unwrap();
         assert_eq!(p.steps.len(), 1);
         assert_eq!(p.warnings.len(), 1);
     }
     #[test]
     fn explicit_zero_and_repeated_hosts_preserved() {
-        let p = plan(
+        let p = checked(
             Workflow::Triage,
             &json!({"throughput":{"target":"fixture","maxTotalTests":5}}),
             &json!({"throughput":{"maxTotalTests":0},"path":{"hostsIPv4":["fixture","fixture"]}}),
@@ -262,7 +278,7 @@ mod tests {
     #[test]
     fn validate_irrelevant_profile_sections() {
         assert!(
-            plan(
+            checked(
                 Workflow::Path,
                 &json!({"throughput":{"port":false}}),
                 &json!({}),
