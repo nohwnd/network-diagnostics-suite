@@ -43,17 +43,31 @@ From Bash, Git Bash, or WSL:
 ./scripts/ci-local.sh
 ```
 
-This is the authoritative pre-completion gate. In order, it runs:
+This is the authoritative pre-completion gate. It runs `scripts/ci-legacy.sh`
+and then `scripts/ci-rust.sh`; either can be run alone while iterating.
 
-1. ShellCheck over the shell entrypoints, wrappers, and Bash path package.
+`scripts/ci-legacy.sh` first checks that `pwsh`, ShellCheck, Bats, `jq`, and
+Node.js 22+ are available, then runs, in order:
+
+1. `make lint`: ShellCheck (`-x`) over every tracked shell script. The
+   `SHELL_SCRIPTS` list in the `Makefile` is the only ShellCheck file list.
 2. The Bash path entrypoint contracts and all Bats tests under `tests/path/bash/`.
 3. Node's built-in test runner over `tests/site/*.test.cjs`.
 4. `scripts/Invoke-SecretScan.ps1`.
-5. `scripts/ci.ps1 -NoInstall`.
+5. `scripts/ci.ps1 -NoInstall`, the only Pester entrypoint.
 
-The PowerShell phase runs PSScriptAnalyzer and all
-Pester behavior and architecture suites. It fails if analysis reports an issue, if
-Pester discovers no tests, or if Pester returns a status other than `Passed`.
+`scripts/ci.ps1` runs PSScriptAnalyzer and all Pester behavior and architecture
+suites. It fails if analysis reports an issue, if Pester discovers no tests, or if
+Pester returns a status other than `Passed`.
+
+`scripts/ci-rust.sh` runs the Node architecture tests
+(`tests/architecture/*.test.cjs`), the desktop and Rust checks described under
+[Rust migration gate](#rust-migration-gate), and the whitespace check.
+
+If the complete gate cannot run (for example, `pwsh` is unavailable), run the
+checks that can (`make lint`, `make test-bash`, `scripts/ci-rust.sh`), and name
+every skipped check and the resulting gap when reporting. A PowerShell-only run
+of `scripts/ci.ps1 -NoInstall` is not equivalent to the gate.
 
 By default, the gate installs no operating-system packages and no PowerShell
 modules. Where current-user PowerShell module installation is allowed, run:
@@ -66,7 +80,7 @@ That option installs only the pinned PSScriptAnalyzer and Pester versions.
 
 ## PowerShell and focused checks
 
-Run the PowerShell-only gate without installing dependencies:
+Run the PowerShell phase alone without installing dependencies:
 
 ```powershell
 pwsh -NoProfile -NonInteractive -File .\scripts\ci.ps1 -NoInstall
@@ -201,12 +215,10 @@ Do not present these gaps as verified runtime behavior.
 
 ## Rust migration gate
 
-The authoritative `scripts/ci-local.sh` composes `scripts/ci-legacy.sh` and
-`scripts/ci-rust.sh`.
-
-The Rust gate requires Rust 1.96.0 and the desktop Node dependencies installed
+`scripts/ci-rust.sh` is the second half of `scripts/ci-local.sh`. It requires Rust 1.96.0 and the desktop Node dependencies installed
 with `npm ci` under `desktop/`. It runs:
 
+- Node architecture tests, including default-host parity across implementations;
 - Rust formatting and Clippy with warnings denied;
 - workspace unit and integration tests;
 - a CLI release build;
