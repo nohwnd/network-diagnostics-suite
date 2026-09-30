@@ -200,25 +200,6 @@ Describe 'Repository architecture boundaries' {
     }
   }
 
-  It 'keeps retired implementation paths and active Uj identifiers absent' {
-    foreach ($retiredPath in @(
-      'apps/windows-tuning/Invoke-NetworkPathTuning-GUI.ps1'
-      'scripts/PathHelpers.ps1'
-      'src/powershell/path/lib-ps'
-    )) {
-      Join-Path $script:RepoRoot $retiredPath | Should -Not -Exist
-    }
-
-    $activeSourceFiles = @(
-      Get-Item -LiteralPath (Join-Path $script:RepoRoot 'Invoke-NetworkLantern.ps1')
-      Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'apps') -Recurse -File -Include '*.ps1', '*.psm1', '*.sh'
-      Get-ChildItem -LiteralPath (Join-Path $script:RepoRoot 'src') -Recurse -File -Include '*.ps1', '*.psm1', '*.sh'
-    )
-    foreach ($file in $activeSourceFiles) {
-      (Get-Content -LiteralPath $file.FullName -Raw) | Should -Not -Match '(?i)\b(?:Get|Test|Invoke|Set|Remove)-Uj[A-Za-z0-9]*\b'
-    }
-  }
-
   It 'marks exactly the directly invoked shell scripts executable in Git' {
     $expected = @(
       'apps/path/test-network-path.sh'

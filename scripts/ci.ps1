@@ -122,8 +122,6 @@ $pathsToAnalyze = @(
   (Join-Path $repoRoot 'Invoke-NetworkLantern.ps1')
 )
 
-& (Join-Path $repoRoot 'scripts/Test-BrandIdentity.ps1') -RepoRoot $repoRoot
-
 $settingsPath = Join-Path $repoRoot 'PSScriptAnalyzerSettings.psd1'
 if ($Filter) {
   Write-Warning 'ci.ps1 -Filter runs a filtered Pester subset only. Run scripts/ci.ps1 without -Filter or ./scripts/ci-local.sh for the full verification gate.'

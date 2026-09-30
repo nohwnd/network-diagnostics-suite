@@ -216,7 +216,7 @@ The authoritative gate is:
 ./scripts/ci-local.sh
 ```
 
-It runs ShellCheck, Bats, the secret-pattern and project-identity checks,
+It runs ShellCheck, Bats, the secret-pattern check,
 PSScriptAnalyzer, and every Pester suite, then the Rust and desktop checks. It
 uses controlled fakes and dry-run paths rather than live probes or Windows
 mutation.

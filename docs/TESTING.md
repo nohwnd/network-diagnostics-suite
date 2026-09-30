@@ -51,7 +51,7 @@ This is the authoritative pre-completion gate. In order, it runs:
 4. `scripts/Invoke-SecretScan.ps1`.
 5. `scripts/ci.ps1 -NoInstall`.
 
-The PowerShell phase runs the project-identity check, PSScriptAnalyzer, and all
+The PowerShell phase runs PSScriptAnalyzer and all
 Pester behavior and architecture suites. It fails if analysis reports an issue, if
 Pester discovers no tests, or if Pester returns a status other than `Passed`.
 
