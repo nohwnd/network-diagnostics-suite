@@ -8,6 +8,7 @@ mod native;
 pub mod path_config;
 pub mod profiles;
 pub mod reports;
+mod request;
 pub mod workflow;
 pub use application::{doctor, helper_operation, plan_request};
 pub use execution::{
