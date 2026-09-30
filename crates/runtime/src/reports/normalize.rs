@@ -1,10 +1,10 @@
 //! Reads native and legacy reports into one normalized shape.
 use super::csv_file::read_csv;
-use lantern_contracts::{Error, RECORD_VERSION, Result};
+use lantern_contracts::{Error, Result};
 use lantern_platform::{REPORT_LIMIT, read_bounded, read_json};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::path::Path;
+use std::{ops::RangeInclusive, path::Path};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NormalizedReport {
@@ -26,18 +26,26 @@ pub(super) fn field<'a>(value: &'a Value, names: &[&str]) -> Option<&'a Value> {
             .map(|(_, value)| value)
     })
 }
-/// Native records are readable from version 1 through the current [`RECORD_VERSION`].
+/// Native record versions these readers understand. Bumping
+/// [`lantern_contracts::RECORD_VERSION`] requires extending the readers and this range first,
+/// so a new writer never outruns its readers.
+const SUPPORTED_RECORD_VERSIONS: RangeInclusive<u64> = 1..=1;
 pub(super) fn supported_record_version(version: &Value) -> bool {
     version
         .as_u64()
-        .is_some_and(|version| (1..=u64::from(RECORD_VERSION)).contains(&version))
+        .is_some_and(|version| SUPPORTED_RECORD_VERSIONS.contains(&version))
 }
 fn unsupported_record_version() -> Error {
-    Error::validation(match RECORD_VERSION {
-        1 => "Unsupported or invalid report schema_version; only version 1 is supported".into(),
-        latest => format!(
-            "Unsupported or invalid report schema_version; versions 1 through {latest} are supported"
-        ),
+    let (first, last) = (
+        SUPPORTED_RECORD_VERSIONS.start(),
+        SUPPORTED_RECORD_VERSIONS.end(),
+    );
+    Error::validation(if first == last {
+        format!("Unsupported or invalid report schema_version; only version {first} is supported")
+    } else {
+        format!(
+            "Unsupported or invalid report schema_version; versions {first} through {last} are supported"
+        )
     })
 }
 pub(super) fn normalize(data: Value) -> Result<NormalizedReport> {
@@ -122,6 +130,10 @@ mod tests {
         assert_eq!(report.provenance["engine"], "legacy");
         let path = normalize(json!([{"Host":"fixture"}])).unwrap();
         assert!(compare(&report, &path)["total_delta"].is_null());
+    }
+    #[test]
+    fn readers_support_the_current_record_version() {
+        assert!(SUPPORTED_RECORD_VERSIONS.contains(&u64::from(lantern_contracts::RECORD_VERSION)));
     }
     #[test]
     fn unknown_or_malformed_native_schema_versions_are_rejected() {
