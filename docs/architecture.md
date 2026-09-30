@@ -384,14 +384,21 @@ directly: `contracts` (throughput, helper, runtime, cli, desktop), `packet`
 - `crates/path-basic`, `crates/path-trace`, and `crates/throughput` own separate
   measurement plans, engines, and result semantics.
 - `crates/runtime` is the application facade that both adapters use:
-  - `application` parses requests into a typed capability and builds plans;
+  - `request` parses a request into a typed capability (a leaf module);
+  - `application` builds plans, layers workflow steps, and supplies `workflow`
+    with its throughput validator;
+  - `workflow` resolves an ordered workflow without depending on planning;
   - `execution` runs a reviewed request and writes the versioned summary;
-  - `workflow` layers workflow steps;
-  - `profiles` and `reports` own profile stores and record reading, listing, and
-    export (readers accept record versions `1..=RECORD_VERSION` and reject others
-    explicitly);
+  - `profiles` owns profile stores;
+  - `reports` reads, normalizes, pages, lists, compares, and exports records in
+    one submodule per concern. Readers accept the explicit
+    `SUPPORTED_RECORD_VERSIONS` range, which a test ties to `RECORD_VERSION`,
+    and reject other versions explicitly;
   - `errors` maps engine, helper, and tuning errors to the shared taxonomy;
   - `manager` holds the single active run and derives its `RunState`.
+
+  Only `manager`, `profiles`, `reports`, and the planning and execution entry
+  points are public; the other modules are crate-private.
 - `crates/cli` is an operator adapter: argument parsing, output, and signal
   handling only.
 

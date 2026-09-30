@@ -7,9 +7,14 @@
 - Restore regular file modes: only the seven directly invoked shell scripts are
   executable, and the architecture test now rejects any other executable file.
 - Give process statuses one home (`contracts::exit`) and derive the run state
-  from a status in one place. CLI exit codes are unchanged and pinned by tests.
-- Split the Rust runtime's application layer into planning, execution, errors,
-  workflow, profile, and report modules; the summary record is a typed struct
+  from a status in one place. CLI exit codes are unchanged; parse, validation,
+  and interruption statuses are pinned by tests.
+- Fix: a desktop run that fails before writing a summary now reports status `1`
+  for non-throughput capabilities, matching its summary and the CLI, instead of
+  the throughput status table.
+- Split the Rust runtime's application layer into request, planning, execution,
+  errors, workflow, profile, and report modules with no module cycles, and make
+  internal modules crate-private; the summary record is a typed struct
   with a golden key test.
 - Replace the compressed desktop frontend with focused TypeScript modules. DOM
   structure, command payloads, and screenshots match the previous interface.
