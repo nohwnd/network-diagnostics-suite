@@ -432,6 +432,39 @@ mod tests {
         assert_eq!(legacy.source_schema, "legacy-throughput-summary");
     }
     #[test]
+    fn native_record_versions_outside_the_supported_range_are_rejected_explicitly() {
+        let supported =
+            normalize(json!({"schema_version":1,"run_id":"fixture","status":"Success"})).unwrap();
+        assert_eq!(supported.source_schema, "rust-v1");
+        assert_eq!(supported.status.as_deref(), Some("Success"));
+        for version in [0, 2] {
+            let error =
+                normalize(json!({"schema_version":version,"run_id":"fixture"})).unwrap_err();
+            assert_eq!(error.category, lantern_contracts::ErrorCategory::Validation);
+            assert_eq!(
+                error.message,
+                "Unsupported or invalid report schema_version; only version 1 is supported"
+            );
+        }
+        let dir =
+            tempfile::tempdir_in(std::fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap();
+        for version in [0, 1, 2] {
+            let path = dir.path().join("summary.json");
+            atomic_json(
+                &path,
+                &json!({"schema_version":version,"run_id":"fixture","counts":{"total":0}}),
+                REPORT_LIMIT,
+            )
+            .unwrap();
+            assert_eq!(read(&path).is_ok(), version == 1, "read {version}");
+            assert_eq!(
+                read_page(&path, 0, 1).is_ok(),
+                version == 1,
+                "page {version}"
+            );
+        }
+    }
+    #[test]
     fn legacy_csv_and_export_preserve_original_values() {
         let dir =
             tempfile::tempdir_in(std::fs::canonicalize(std::env::temp_dir()).unwrap()).unwrap();
