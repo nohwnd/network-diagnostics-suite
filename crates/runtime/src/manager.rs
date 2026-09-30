@@ -265,4 +265,61 @@ mod tests {
         assert_eq!(progress.exit_code, Some(1));
         assert_eq!(progress.state, RunState::PartialFailure);
     }
+
+    #[test]
+    fn wire_enums_match_the_shared_fixture() {
+        // The positional matches fail to compile when a variant is added without listing it here.
+        let run_states = [
+            RunState::Running,
+            RunState::Cancelling,
+            RunState::Succeeded,
+            RunState::PartialFailure,
+            RunState::Failed,
+            RunState::Cancelled,
+        ];
+        for (index, state) in run_states.iter().enumerate() {
+            let position = match state {
+                RunState::Running => 0,
+                RunState::Cancelling => 1,
+                RunState::Succeeded => 2,
+                RunState::PartialFailure => 3,
+                RunState::Failed => 4,
+                RunState::Cancelled => 5,
+            };
+            assert_eq!(index, position);
+        }
+        let categories = [
+            ErrorCategory::Validation,
+            ErrorCategory::Prerequisite,
+            ErrorCategory::Connectivity,
+            ErrorCategory::PartialFailure,
+            ErrorCategory::TotalFailure,
+            ErrorCategory::Internal,
+            ErrorCategory::Permission,
+            ErrorCategory::Cancelled,
+            ErrorCategory::Busy,
+        ];
+        for (index, category) in categories.iter().enumerate() {
+            let position = match category {
+                ErrorCategory::Validation => 0,
+                ErrorCategory::Prerequisite => 1,
+                ErrorCategory::Connectivity => 2,
+                ErrorCategory::PartialFailure => 3,
+                ErrorCategory::TotalFailure => 4,
+                ErrorCategory::Internal => 5,
+                ErrorCategory::Permission => 6,
+                ErrorCategory::Cancelled => 7,
+                ErrorCategory::Busy => 8,
+            };
+            assert_eq!(index, position);
+        }
+        let fixture: serde_json::Value = serde_json::from_str(include_str!(
+            "../../../tests/fixtures/contracts/wire-enums.json"
+        ))
+        .unwrap();
+        assert_eq!(
+            serde_json::json!({"run_state":run_states,"error_category":categories}),
+            fixture
+        );
+    }
 }
