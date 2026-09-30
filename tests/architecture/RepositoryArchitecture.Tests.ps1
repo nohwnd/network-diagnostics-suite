@@ -219,24 +219,24 @@ Describe 'Repository architecture boundaries' {
     }
   }
 
-  It 'preserves executable Git modes for shell entrypoints' {
+  It 'marks exactly the directly invoked shell scripts executable in Git' {
     $expected = @(
       'apps/path/test-network-path.sh'
+      'scripts/ci-legacy.sh'
       'scripts/ci-local.sh'
+      'scripts/ci-rust.sh'
       'scripts/install-test-deps.sh'
+      'scripts/prepare-macos-app.sh'
       'scripts/run-workflow.sh'
     )
-    $modeByPath = @{}
-    & git -C $script:RepoRoot ls-files --stage -- @expected | ForEach-Object {
-      if ($_ -match '^(?<mode>\d+)\s+\S+\s+\d+\s+(?<path>.+)$') {
-        $modeByPath[$Matches.path] = $Matches.mode
+    $executable = @(
+      & git -C $script:RepoRoot ls-files --stage | ForEach-Object {
+        if ($_ -match '^100755\s+\S+\s+\d+\s+(?<path>.+)$') { $Matches.path }
       }
-    }
+    )
     $LASTEXITCODE | Should -Be 0
 
-    foreach ($relativePath in $expected) {
-      $modeByPath[$relativePath] | Should -Be '100755'
-    }
+    ($executable | Sort-Object) -join "`n" | Should -Be (($expected | Sort-Object) -join "`n")
   }
 
   It 'keeps the static planner honest about its non-executing boundary' {
