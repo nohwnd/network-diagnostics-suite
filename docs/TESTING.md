@@ -79,11 +79,12 @@ temporarily and restores the previous value afterward.
 Run a Pester subset while you iterate:
 
 ```powershell
-pwsh -NoProfile -NonInteractive -File .\scripts\Invoke-Tests.ps1 `
+pwsh -NoProfile -NonInteractive -File .\scripts\ci.ps1 -NoInstall `
   -Filter 'Throughput'
 ```
 
-The filter matches Pester full names and fails when it selects no tests. Useful
+The filter matches Pester full names, skips PSScriptAnalyzer, and fails when it
+selects no tests. Useful
 filters include `Path`, `Throughput`, `Windows tuning`, and `Workflow`. A focused
 run is not equivalent to the complete gate.
 

@@ -150,8 +150,8 @@ Describe 'Repository architecture boundaries' {
     $mutationFixtures = @{
       AppPath = 'C:/repository/apps/path/Test-NetworkPath.ps1'
       QuotedRelativeAppPath = "Join-Path `$repositoryRoot 'apps/path/Test-NetworkPath.ps1'"
-      ScriptPath = 'C:/repository/scripts/Invoke-Tests.ps1'
-      QuotedRelativeScriptPath = "Join-Path `$repositoryRoot './scripts/Invoke-Tests.ps1'"
+      ScriptPath = 'C:/repository/scripts/ci.ps1'
+      QuotedRelativeScriptPath = "Join-Path `$repositoryRoot './scripts/ci.ps1'"
     }
     foreach ($patternName in $prohibitedModuleReferences.Keys) {
       $mutationFixtures[$patternName] | Should -Match $prohibitedModuleReferences[$patternName] -Because "$patternName must catch its prohibited form"
