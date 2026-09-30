@@ -189,31 +189,6 @@ contracts. They run without loading Windows Forms on non-Windows hosts.
 
 Do not present these gaps as verified runtime behavior.
 
-## Tooling performance measurements
-
-The optional benchmark uses sanitized files and controlled five-second local
-processes. Before changing either implementation, save baseline copies:
-
-```bash
-mkdir -p artifacts/audit-benchmark/baseline
-cp src/bash/path/lib/runner.sh artifacts/audit-benchmark/baseline/runner.sh
-cp scripts/Invoke-SecretScan.ps1 artifacts/audit-benchmark/baseline/Invoke-SecretScan.ps1
-node scripts/benchmark-tooling.mjs artifacts/audit-benchmark/baseline \
-  > artifacts/audit-benchmark/results.json
-```
-
-It runs one warm-up and ten measured repetitions per implementation, alternating
-order, and reports medians, ranges, sleep and process counts, candidate-file
-traversals, and detection counts. The scanner fixture has 241 files, 1,234,644
-bytes, and 721 expected pattern-line matches. Process counts follow the controlled
-harness's launches, and file-traversal counts follow the scanner loops; neither is
-a system-wide profiler measurement. Generated results stay under `artifacts/`.
-
-The polling acceptance criterion is at least 75% fewer normal sleeps, with an
-unchanged exit status and up to roughly 0.5 seconds of completion or
-signal-response latency plus scheduling tolerance. Keep the scanner change only
-when detections agree and elapsed time does not materially regress.
-
 ## Troubleshooting
 
 - If `scripts/ci.ps1 -NoInstall` reports a missing pinned module, run
@@ -262,8 +237,8 @@ Silicon, and macOS Intel jobs. The macOS deployment target is 13.0; builds use
 supported newer CI hosts. Local macOS checks do not verify Windows native
 providers, Windows recovery, Linux authorization, or remote CI status.
 
-See [the Rust guide](RUST.md) for pure preview commands and the optional
-startup/CPU/RSS benchmark. Interoperability tests are limited to bounded loopback
+See [the Rust guide](RUST.md) for pure preview commands.
+Interoperability tests are limited to bounded loopback
 traffic with development reference servers. Production engines do not invoke
 iperf3, MTR, PowerShell, Bash, or command-line probes.
 
