@@ -135,7 +135,7 @@ async fn execute_prepared_with_exit_code(
     } else if execution.completed == 0
         && let Err(error) = &result
     {
-        error.category.throughput_exit_code()
+        exit::throughput(error.category)
     } else if result.is_err() || execution.failed > 0 {
         if execution.completed > execution.failed {
             exit::PARTIAL_FAILURE
