@@ -211,7 +211,8 @@ Do not present these gaps as verified runtime behavior.
   Bash or WSL environment that runs `scripts/ci-local.sh`.
 - If a focused run selects no tests, use a substring from a Pester `Describe`,
   `Context`, or `It` name.
-- Preserve LF line endings and Git mode `100755` for executable shell entrypoints.
+- Preserve LF line endings. Only the directly invoked shell scripts are Git mode
+  `100755`; the architecture test fails on any other executable file.
 
 ## Rust migration gate
 
