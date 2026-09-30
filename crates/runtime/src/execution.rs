@@ -38,7 +38,8 @@ struct Counts {
     total: u64,
 }
 
-pub async fn execute_request(
+#[cfg(test)]
+pub(crate) async fn execute_request(
     value: &Value,
     out: &Path,
     manager: &RunManager,

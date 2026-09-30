@@ -90,7 +90,7 @@ impl ProfileStore {
         SidecarLock::acquire(Path::new(&name), Duration::from_secs(15))
     }
 }
-pub fn validate_name(name: &str) -> Result<()> {
+pub(crate) fn validate_name(name: &str) -> Result<()> {
     if name.trim().is_empty()
         || name.chars().count() > 128
         || name
@@ -105,7 +105,7 @@ pub fn validate_name(name: &str) -> Result<()> {
 }
 
 /// Validate stored control input without requiring a target in a partial throughput profile.
-pub fn validate_parameters(parameters: &Value) -> Result<()> {
+pub(crate) fn validate_parameters(parameters: &Value) -> Result<()> {
     if serde_json::to_vec(parameters)
         .map_err(|e| Error::validation(e.to_string()))?
         .len()

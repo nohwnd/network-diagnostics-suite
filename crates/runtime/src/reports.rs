@@ -48,7 +48,7 @@ fn unsupported_record_version() -> Error {
         ),
     })
 }
-pub fn normalize(data: Value) -> Result<NormalizedReport> {
+pub(crate) fn normalize(data: Value) -> Result<NormalizedReport> {
     let schema_version = field(&data, &["schema_version"]);
     if let Some(version) = schema_version {
         if !supported_record_version(version) {
@@ -305,7 +305,7 @@ impl<T> ZipRef<T> for Option<T> {
     }
 }
 
-pub fn export(report: &NormalizedReport, destination: &Path) -> Result<()> {
+pub(crate) fn export(report: &NormalizedReport, destination: &Path) -> Result<()> {
     atomic_json(
         destination,
         &json!({"schema_version":RECORD_VERSION,"provenance":Provenance::default(),"imported":report}),
@@ -356,7 +356,7 @@ pub fn export_file(source: &Path, destination: &Path) -> Result<()> {
     }
     export(&report, destination)
 }
-pub fn page(data: &Value, offset: usize, limit: usize) -> Result<Vec<Value>> {
+pub(crate) fn page(data: &Value, offset: usize, limit: usize) -> Result<Vec<Value>> {
     if limit == 0 || limit > 100 {
         return Err(Error::validation("Page size must be 1–100"));
     }
