@@ -318,46 +318,60 @@ Architecture rules are enforced mechanically:
   adapters, module and Bash loader rules, manifest/export agreement, dependency
   direction, workflow separation, the static planner boundary, and the exact set
   of executable files in Git.
-- `tests/architecture/rust-boundaries.test.cjs` (Node): engines spawn no CLI
-  tools, packet parsing stays free of IO, the planner has no persistence, and the
+- `tests/architecture/rust-boundaries.test.cjs` (Node): the exact internal crate
+  dependency edges, engines spawn no CLI tools, packet parsing stays free of IO, the planner has no persistence, and the
   production desktop grants no test permissions.
 - `tests/architecture/default-hosts.test.cjs` (Node): the default path targets
   agree across `config/hosts.conf`, both legacy path engines, and both Rust path
   engines.
-- Cargo's workspace graph enforces crate dependency direction.
 
 The complete validation command is documented in [TESTING.md](TESTING.md).
 
 ## Rust application boundaries
 
 Crates depend in one direction, from vocabulary to engines to the application
-facade to adapters:
+facade to adapters. Cargo only rejects cycles, so
+`tests/architecture/rust-boundaries.test.cjs` lists every allowed internal edge
+and fails on any other.
 
 ```mermaid
 flowchart TD
-    contracts[contracts: errors, provenance, record version, exit policy]
-    platform[platform: bounded unprivileged IO]
-    packet[packet: packet build and parse, no IO]
-    pathio[path-io: native sockets and OS primitives]
-    engines[path-basic / path-trace / throughput]
-    tuning[tuning: Windows providers and protected recovery]
-    helper[helper: authenticated privileged helper, client and server]
-    runtime[runtime: configuration, workflows, run manager, records]
     cli[cli]
     desktop[desktop/src-tauri]
+    runtime[runtime: configuration, workflows, run manager, records]
+    helper[helper: authenticated privileged helper, client and server]
+    tuning[tuning: Windows providers and protected recovery]
+    basic[path-basic]
+    trace[path-trace]
+    throughput[throughput]
+    pathio[path-io: native sockets and OS primitives]
+    packet[packet: packet build and parse, no IO]
+    platform[platform: bounded unprivileged IO]
+    contracts[contracts: errors, provenance, record version, exit policy]
 
-    platform --> contracts
-    pathio --> packet
-    engines --> pathio
-    engines --> packet
-    helper --> engines
-    helper --> tuning
-    runtime --> helper
-    runtime --> engines
-    runtime --> platform
     cli --> runtime
     desktop --> runtime
+    runtime --> helper
+    runtime --> tuning
+    runtime --> basic
+    runtime --> trace
+    runtime --> throughput
+    runtime --> platform
+    helper --> tuning
+    helper --> basic
+    helper --> trace
+    helper --> throughput
+    basic --> pathio
+    trace --> pathio
+    throughput --> pathio
+    pathio --> packet
+    platform --> contracts
 ```
+
+For readability the diagram omits edges to the leaf crates that most crates use
+directly: `contracts` (throughput, helper, runtime, cli, desktop), `packet`
+(path-basic, path-trace, throughput, runtime), `path-io` (helper, runtime), and
+`platform` (cli, for bounded settings reads).
 
 - `crates/contracts` is the shared vocabulary: `ErrorCategory`, `Error`,
   `Provenance`, `RECORD_VERSION`, and the `exit` module. `exit` is the only place
@@ -403,8 +417,8 @@ registry operations.
 without shell or executable inputs. The frontend is plain TypeScript: `markup.ts`
 holds the static page structure, `state.ts` the explicit view state, `model.ts`
 and `render.ts` the pure, unit-tested request and presentation logic, and one
-module per concern (`plan`, `run`, `profiles`, `reports`, `runtime`,
-`navigation`) wires events to Rust commands through `bridge.ts`.
+module per concern (`plan`, `run`, `measurement`, `profiles`, `reports`,
+`library`, `runtime`, `navigation`, with `dom.ts` helpers) wires events to Rust commands through `bridge.ts`.
 
 The presentation layer owns request freshness for profile editors and report
 selections; asynchronous responses update only

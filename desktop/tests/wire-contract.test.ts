@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { active, type Progress } from '../src/model';
 
-// Written by the Rust runtime test `wire_enums_match_the_shared_fixture`.
+// The Rust runtime test `wire_enums_match_the_shared_fixture` checks the same fixture against serde.
 const wire = JSON.parse(
   readFileSync(new URL('../../tests/fixtures/contracts/wire-enums.json', import.meta.url), 'utf8'),
 ) as { run_state: string[]; error_category: string[] };
