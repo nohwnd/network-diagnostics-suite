@@ -7,8 +7,8 @@
 - Restore regular file modes: only the seven directly invoked shell scripts are
   executable, and the architecture test now rejects any other executable file.
 - Give process statuses one home (`contracts::exit`) and derive the run state
-  from a status in one place. CLI exit codes are unchanged; parse, validation,
-  and interruption statuses are pinned by tests.
+  from a status in one place. CLI exit codes are unchanged: CLI tests pin the
+  parse and validation statuses, and runtime tests pin interruption.
 - Fix: a desktop run that fails before writing a summary now reports status `1`
   for non-throughput capabilities, matching its summary and the CLI, instead of
   the throughput status table.
