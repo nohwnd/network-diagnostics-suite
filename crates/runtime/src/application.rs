@@ -1,5 +1,5 @@
 use crate::{config, manager::RunManager, path_config, workflow};
-use lantern_contracts::{Error, ErrorCategory, Provenance, RECORD_VERSION, Result, now};
+use lantern_contracts::{Error, ErrorCategory, Provenance, RECORD_VERSION, Result, exit, now};
 use lantern_platform::{PROFILE_LIMIT, REPORT_LIMIT, atomic_json, read_json};
 use lantern_throughput::{ServerCapabilities, SuiteConfig, ThroughputError, ThroughputPlan};
 use serde::{Deserialize, Serialize};
@@ -320,7 +320,7 @@ pub async fn execute_request(
         out,
         manager,
         cancel,
-        &std::sync::atomic::AtomicU8::new(130),
+        &std::sync::atomic::AtomicU8::new(exit::CANCELLED),
     )
     .await
 }
@@ -353,7 +353,7 @@ pub async fn execute_prepared(
         out,
         handle,
         cancel,
-        &std::sync::atomic::AtomicU8::new(130),
+        &std::sync::atomic::AtomicU8::new(exit::CANCELLED),
     )
     .await
 }
@@ -408,27 +408,23 @@ async fn execute_prepared_with_exit_code(
         error.category.throughput_exit_code()
     } else if result.is_err() || execution.failed > 0 {
         if execution.completed > execution.failed {
-            14
+            exit::PARTIAL_FAILURE
         } else {
-            15
+            exit::TOTAL_FAILURE
         }
     } else if execution.threshold_breaches > 0 {
-        14
+        exit::PARTIAL_FAILURE
     } else {
-        0
+        exit::SUCCESS
     };
-    let code = if req.capability != "throughput" && !matches!(code, 0 | 130 | 143) {
-        1
-    } else {
-        code
-    };
+    let code = exit::for_capability(req.capability == "throughput", code);
     if let Err(error) = result {
         handle.progress(execution.completed, Some(&error.message));
         execution.warnings.push(error.message);
     }
     let status = if cancelled {
         "Cancelled"
-    } else if code == 0 {
+    } else if code == exit::SUCCESS {
         "Success"
     } else if execution.completed > execution.failed {
         "PartialFailure"
@@ -438,7 +434,7 @@ async fn execute_prepared_with_exit_code(
     let summary = json!({"schema_version":RECORD_VERSION,"provenance":Provenance::default(),"run_id":run_id,"timestamp":started,"completed_utc":now(),"elapsed_seconds":elapsed.elapsed().as_secs_f64(),"status":status,"exit_code":code,"counts":{"planned":total,"total":execution.completed,"failed":execution.failed,"succeeded":execution.completed.saturating_sub(execution.failed),"skipped":execution.skipped},"threshold_breach_count":execution.threshold_breaches,"warnings":execution.warnings,"plan":preview});
     let path = root.join("summary.json");
     if let Err(error) = atomic_json(&path, &summary, REPORT_LIMIT) {
-        handle.finish(16, None);
+        handle.finish(exit::INTERNAL, None);
         return Err(error);
     }
     let summary_path = path.to_string_lossy().to_string();

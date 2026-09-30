@@ -1,5 +1,5 @@
 //! One active measurement and bounded progress snapshots shared by application adapters.
-use lantern_contracts::{Error, ErrorCategory, Result, bounded_text, new_run_id, now};
+use lantern_contracts::{Error, ErrorCategory, Result, bounded_text, exit, new_run_id, now};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::VecDeque,
@@ -18,6 +18,21 @@ pub enum RunState {
     PartialFailure,
     Failed,
     Cancelled,
+}
+impl RunState {
+    /// The final state of a run that ended with a process status.
+    pub fn from_exit_code(code: u8, partial: bool) -> Self {
+        match code {
+            exit::SUCCESS => Self::Succeeded,
+            exit::PARTIAL_FAILURE => Self::PartialFailure,
+            code if exit::is_interrupted(code) => Self::Cancelled,
+            _ if partial => Self::PartialFailure,
+            _ => Self::Failed,
+        }
+    }
+    pub fn is_active(&self) -> bool {
+        matches!(self, Self::Running | Self::Cancelling)
+    }
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Progress {
@@ -61,7 +76,7 @@ impl RunManager {
         if inner
             .active
             .as_ref()
-            .is_some_and(|a| matches!(a.progress.state, RunState::Running | RunState::Cancelling))
+            .is_some_and(|a| a.progress.state.is_active())
         {
             return Err(Error::new(
                 ErrorCategory::Busy,
@@ -114,10 +129,7 @@ impl RunManager {
             .as_mut()
             .filter(|a| a.progress.run_id == id)
             .ok_or_else(|| Error::validation("Run ID is not active"))?;
-        if matches!(
-            active.progress.state,
-            RunState::Running | RunState::Cancelling
-        ) {
+        if active.progress.state.is_active() {
             active.progress.state = RunState::Cancelling;
             active.cancel.cancel();
             self.updates.send_replace(Some(active.progress.clone()));
@@ -190,13 +202,7 @@ impl RunHandle {
                 .as_mut()
                 .filter(|a| a.progress.run_id == self.run_id)
         {
-            active.progress.state = match code {
-                0 => RunState::Succeeded,
-                14 => RunState::PartialFailure,
-                130 | 143 => RunState::Cancelled,
-                _ if partial => RunState::PartialFailure,
-                _ => RunState::Failed,
-            };
+            active.progress.state = RunState::from_exit_code(code, partial);
             active.progress.exit_code = Some(code);
             active.progress.report_path = path;
             self.manager
@@ -208,7 +214,11 @@ impl RunHandle {
 impl Drop for RunHandle {
     fn drop(&mut self) {
         if !self.finished {
-            let code = if self.cancel.is_cancelled() { 130 } else { 16 };
+            let code = if self.cancel.is_cancelled() {
+                exit::CANCELLED
+            } else {
+                exit::INTERNAL
+            };
             self.cancel.cancel();
             self.complete(code, None, false);
         }
