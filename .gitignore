@@ -1,55 +1,155 @@
-# Pester (Invoke-Pester -CI)
-testResults.xml
-TestResults.xml
-PesterResults*.xml
-junit.xml
-test-results/
-TestResults/
-coverage/
-artifacts/
-profiles/*.local.json
+# Test and analysis output
+/PesterResults*.xml
+/TestResults/
+/test-results/
+/coverage/
+/junit*.xml
+*.sarif
 
-# Secrets and credentials
+# Runtime data and diagnostic output
+/.iperf3/
+/artifacts/
+/backups/
+/logs/
+/reports/
+/results/
+/profiles/*.local.json
+*.clixml
+*.pcap
+*.pcapng
+*.reg
+
+# Secrets and local configuration
 .env
 .env.*
-*.pem
-*.key
-*.pfx
-*.p12
-*.crt
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.template
 *.cer
-*credentials*.json
-*secret*
-!scripts/Invoke-SecretScan.ps1
-!SECURITY.md
+*.crt
+*.jks
+*.key
+*.keystore
+*.p12
+*.pem
+*.pfx
+/.credentials/
+/.secrets/
+/credentials.local.json
+/secrets.local.json
+/*.credentials.local.json
+/*.secrets.local.json
 
-# Logs and temp files
-*.log
-*.tmp
+# Logs and temporary files
 *.bak
+*.log
+*.orig
+*.rej
 *.swp
-.cache/
+*.tmp
+*~
+/.cache/
 
-# Local findings/logs/decisions
-DECISIONS.md
-FINDINGS.md
-LOG.md
-REFACTOR_PLAN.md
-PHYSICS_AUDIT.md
-validation.md
-HANDOFF.md
+# Language and tool caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.tsbuildinfo
 
-# Task-tracking artifacts
-DONE
-
-# AI tooling
+# Agent and development-assistant files
+AGENT.md
+AGENTS.md
+agent.md
+agents.md
+CLAUDE.md
+CODEX.md
+GEMINI.md
+.agent/
+.agents/
+.ai/
+.aider.conf.yml
+.aider.chat.history.md
+.aider.input.history
+.aider.tags.cache.v*
 .claude/
-progress.md
-
-# OS / Editor
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-.cursor/
 .codex/
+.continue/
+.cursor/
+.kilo/
+.prompt/
+.prompts/
+.serena/
+.windsurf/
+.cursorrules
+.windsurfrules
+.mcp.json
+agent-instructions.*
+agent-context*
+agent-memory*
+agent-notes*
+agent-output*
+agent-report*
+instructions-for-agent.*
+agent-prompts/
+ai-prompts/
+prompt/
+prompts/
+*-ledger.md
+*_ledger.md
+*-LEDGER.md
+*_LEDGER.md
+/AI_AUDIT*
+/AI_NOTES*
+/AI_REPORT*
+/AI_REVIEW*
+/AI_SUMMARY*
+/CHATGPT_NOTES*
+/CLAUDE_NOTES*
+/CODEX_NOTES*
+/CLEANUP_REPORT.md
+/GPT_NOTES*
+/HANDOFF.md
+/LEDGER.md
+/LLM_NOTES*
+/PROMPT.md
+/PROMPTS.md
+/TASK_REPORT.md
+/agent-output*
+/agent-report*
+/audit-output*
+/completion-report*
+/devlog*
+/development-log*
+/generated-summary*
+/handoff*
+/handover*
+/implementation-report*
+/progress.md
+/repo-analysis*
+/repository-analysis*
+/scratchpad*
+/work-log*
+/worklog*
+/.github/copilot-instructions.md
+/.github/instructions/
+
+# Local development tools and indexes
+/.codacy/*
+!/.codacy/codacy.yaml
+!/.codacy/codacy.yml
+.codegraph/
+/.idea/
+/.vscode/
+
+# OS metadata
+.DS_Store
+Desktop.ini
+Thumbs.db
+
+# Rust and desktop build products
+/target/
+/desktop/node_modules/
+/desktop/dist/
+/desktop/test-results/
+/desktop/src-tauri/gen/

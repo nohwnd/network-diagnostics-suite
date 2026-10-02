@@ -1,51 +1,114 @@
 # Security
 
-- Do not publish artifacts containing internal hostnames, IPs, routes, or local paths.
-- Treat saved throughput reports and Windows tuning backups as sensitive operational data.
-- Report security issues privately through the repository security contact or a private channel.
-- Do not attach registry backups, `Get-NetQosPolicy` exports, or raw route traces to public issues unless sanitized.
+Network Lantern runs local diagnostic commands and can modify Windows network
+configuration. It does not expose a network service or an authentication
+endpoint.
 
-## Defensive Review Notes
+## Reporting a vulnerability
 
-### Repo Index
+Use the repository's GitHub Security tab and private vulnerability reporting flow
+when it is available. If private reporting is unavailable, open a public issue
+that asks for a private contact channel without including vulnerability details.
 
-- `Invoke-NetworkDiagnostics.ps1`: umbrella workflow dispatcher; merges profile defaults with CLI input and runs child PowerShell entrypoints in isolated processes.
-- `apps/path/` and `src/powershell/path/`: Windows path diagnostics over `ping`, `tracert`, `pathping`, `Test-NetConnection`, and best-effort UDP/TCP probes.
-- `apps/path/mtr-test-suite.sh` and `src/bash/path/`: Bash/MTR path diagnostics with host/config/path validation.
-- `apps/throughput/` and `src/powershell/throughput/`: `iperf3` throughput tests, saved profiles, result reports, and run indexes.
-- `apps/windows-tuning/` and `src/powershell/windows-tuning/`: optional Windows QoS/NIC/power-plan tuning with backup and restore.
-- `scripts/`: local CI, PowerShell quality gates, helper functions, and lightweight secret scanning.
-- `tests/`: Bats and Pester unit, integration, smoke, and E2E coverage for operator workflows.
+Do not publish credentials, exploit details, internal infrastructure, or
+unsanitized diagnostic output in an issue or pull request.
 
-### Threat Model
+## Supported versions
 
-- Auth boundary: no network service or login surface exists in this repo; authorization is local operator control and OS account privileges.
-- Input boundary: CLI parameters, JSON workflow profiles, throughput profile stores, `config/hosts.conf`, and environment-derived paths.
-- File boundary: artifacts, logs, throughput profile JSON, Windows tuning backup folders, registry exports, CSV, CLIXML, and run reports.
-- Network boundary: diagnostic targets are operator-supplied hosts passed to native tools; command invocation must stay argument-array based and reject shell/control characters.
-- Privilege boundary: Windows tuning restore/apply can require administrator rights and can modify registry, QoS, NIC, and power-plan state.
+There is no tagged supported release. Security fixes target `main`. Historical
+project names, legacy repositories, and arbitrary commits are out of scope.
 
-### Findings
+## Sensitive data
 
-| ID | Severity | Status | Evidence | Impact | Patch |
-| --- | --- | --- | --- | --- | --- |
-| NDS-SEC-001 | Medium | Fixed on `security/remediate-review-findings` | `Restore-UjState` previously continued when `backup_manifest.json` was missing or malformed; regression tests now cover both cases in `tests/windows-tuning/WindowsNetworkTuning.Tests.ps1`. | A local attacker or accidental operator error could point restore at an untrusted folder and trigger registry/QoS/NIC/power restore helpers without a validated suite manifest. | Restore now fails closed for every non-OK manifest status before any component restore helper runs. |
-| NDS-SEC-002 | Low | Fixed on `security/remediate-review-findings` | `Invoke-NetworkDiagnostics.ps1` read `-ProfilePath` with `Get-Content -Raw | ConvertFrom-Json` and no file-size limit. | A very large local profile could cause avoidable memory/CPU pressure during defensive tooling runs. | Workflow profiles now have a 1 MB cap before parsing, with Pester coverage for oversized files. |
-| NDS-SEC-003 | Low | Fixed on `security/remediate-review-findings` | `Open-FolderOrFile` passed output paths directly to platform openers; throughput `OutDir` validation did not reject leading-dash path names. | A local operator-supplied path that looks like an option could change opener behavior when `-OpenOutputFolder` is used. | Throughput `OutDir` rejects option-like paths, opener calls receive absolute paths, and classification stays input-validation. |
+Treat these files and values as sensitive unless you have reviewed and sanitized
+them:
 
-### PR Summary
+- hostnames, IP addresses, DNS results, routes, and packet captures
+- raw path and `iperf3` output, run indexes, and saved profiles
+- registry exports, QoS policy exports, NIC data, and tuning backups
+- local paths, usernames, machine identifiers, logs, and crash output
 
-Title: `fix: remediate security review findings`
+The default generated-data paths are listed in `README.md` and ignored by Git. An
+ignored file is not safe to publish by default.
 
-Summary:
+Use an operator-controlled private output directory with restrictive filesystem
+permissions. Do not send output or backups through a path that an untrusted user
+can replace, redirect, or populate.
 
-- Block Windows tuning restore when the backup manifest is missing, invalid, or incompatible.
-- Cap workflow profile size before JSON parsing.
-- Reject option-like throughput output paths and pass absolute paths to platform openers.
-- Document the current security review index, threat model, finding closure, and verification.
+## Trust model
 
-Verification:
+Network Lantern has no application authentication or authorization layer. The
+operating-system identity, elevation state, target authorization, and local
+filesystem permissions govern its effects.
 
-- `pwsh -NoProfile -NonInteractive -Command "Invoke-Pester -Path ./tests/orchestration/Invoke-NetworkDiagnostics.Tests.ps1,./tests/throughput/Iperf3TestSuite.Tests.ps1,./tests/windows-tuning/WindowsNetworkTuning.Tests.ps1 -CI"`
-- `./scripts/ci-local.sh`
-- `git diff --check`
+Treat the source checkout, configuration and profile files, output roots, backup
+namespaces, and executable search path as trusted control inputs. Review an
+externally supplied workflow profile in `-DryRun` before live execution. The
+workflow transport prevents arbitrary adapter selection, but it does not
+authorize the selected targets or requested tuning action.
+
+Elevated tuning imports code from the current checkout and invokes local native
+tools. Run Backup, Apply, or Restore only from a trusted checkout, with a trusted
+executable search path and an independent recovery method.
+
+## Execution boundaries
+
+- Host, path, and selection inputs receive capability-specific validation before
+  native tools are invoked. That validation does not make an untrusted output
+  directory or executable search path safe.
+- Native commands receive argument arrays instead of interpolated shell command
+  strings.
+- PowerShell path `-DryRun`, Bash path `--dry-run`, and a normal throughput
+  `-WhatIf` run do not probe the network or write result files.
+- Throughput profile operations are writes: `-SaveProfile -WhatIf` saves the
+  profile, and `-DeleteProfile` modifies the selected store.
+- Elevated throughput processes refuse the cwd-derived default and relative
+  profile-store paths at every read and write boundary. An operator-supplied
+  absolute profile path remains supported. The GUI's displayed default is treated
+  as the cwd-derived default even though it is shown expanded.
+- Throughput summary comparisons, run-index recovery, and cancellation signals use
+  bounded reads from the opened handle, rather than a size check followed by a
+  second open.
+- Windows tuning `-DryRun` does not write backups, registry values, QoS policies,
+  NIC settings, or power-plan state.
+- A tuning dry run does not prove that every application path or hardware-specific
+  setting will pass live validation or apply successfully.
+- Windows tuning `Apply`, `Backup`, and `Restore` require elevation.
+- Apply validates the complete backup path and existing artifacts before any
+  elevated write, then verifies its manifest, required artifacts, and digests
+  before tuning mutation.
+- Restore requires a compatible tool identity and strict, scope-bounded schemas for
+  registry, QoS, NIC, RSC, and power-plan artifacts. It copies approved artifacts
+  to protected staging and revalidates staging before each component.
+
+Artifact hashes detect changes within a backup bundle; they do not authenticate
+who created it. Restore only locally created backups kept under trusted access
+control. Treat an imported or transferred bundle as untrusted unless its
+provenance was authenticated independently.
+
+These checks reduce accidental or malicious input-handling risk. They do not
+replace operating-system backups, access control, or a tested recovery plan.
+
+## Operator guidance
+
+Run diagnostics only against targets you are authorized to test. Throughput tests
+can consume substantial bandwidth and may affect other users of the network or
+server.
+
+Use real Windows tuning mutation only on a system with an independent recovery
+method. The elevated apply-and-restore cycle has not been validated on a
+disposable Windows VM for the current revision.
+
+Before live execution, inspect the resolved targets, requested actions, output
+root, checkout provenance, and executable search path. Keep generated output and
+backup bundles in private directories controlled by the operating user, or by
+Administrators and SYSTEM where applicable.
+
+Before publishing repository changes:
+
+```bash
+git status --short
+pwsh -NoProfile -NonInteractive -File scripts/Invoke-SecretScan.ps1
+```
+
+Review every tracked and untracked publication candidate by hand after the scan.

@@ -1,4 +1,4 @@
-# Configuration/profile validation helpers (private to Iperf3TestSuite)
+# Configuration/profile validation helpers (private to NetworkLantern.Throughput)
 
 function ConvertTo-Iperf3IntArray {
   [CmdletBinding()]
@@ -138,6 +138,7 @@ function ConvertTo-Iperf3KnownValue {
     'Omit' { return (ConvertTo-Iperf3IntInRange -Value $Value -Key 'Omit' -Min 0 -Max 60) }
     'ConnectTimeoutMs' { return (ConvertTo-Iperf3IntInRange -Value $Value -Key 'ConnectTimeoutMs' -Min 1000 -Max 300000) }
     'RetryCount' { return (ConvertTo-Iperf3IntInRange -Value $Value -Key 'RetryCount' -Min 0 -Max 5) }
+    'MaxTotalTests' { return (ConvertTo-Iperf3IntInRange -Value $Value -Key 'MaxTotalTests' -Min 0 -Max 1000000) }
     'ThresholdMinThroughputMbps' { return (ConvertTo-Iperf3DoubleInRange -Value $Value -Key 'ThresholdMinThroughputMbps' -Min 0 -Max 1000000) }
     'ThresholdMaxLossPct' { return (ConvertTo-Iperf3DoubleInRange -Value $Value -Key 'ThresholdMaxLossPct' -Min 0 -Max 100) }
     'ThresholdMaxJitterMs' { return (ConvertTo-Iperf3DoubleInRange -Value $Value -Key 'ThresholdMaxJitterMs' -Min 0 -Max 1000000) }
@@ -200,7 +201,7 @@ function ConvertTo-Iperf3KnownValue {
       if ($v -notin @('TCP', 'UDP', 'Both')) { throw "Invalid Protocol '$v'." }
       return $v
     }
-    default { throw "Unknown parameter key '$Key'. Run Get-Iperf3TestSuiteDefaultParameterSet to see valid parameter names." }
+    default { throw "Unknown parameter key '$Key'. Run Get-NetworkThroughputDefaultParameterSet to see valid parameter names." }
   }
 }
 
